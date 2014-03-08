@@ -89,6 +89,7 @@
                 return this._getText[this.lang][section]
             }
 
+            // buffer buttons, add into page with this.hookUI
             KLP.prototype.addButton = function (buttons) {
                 if (! buttons.length ) {
                     return false;
@@ -101,14 +102,15 @@
                 )
 
             }
-            KLP.prototype.hookUI = function (buttons) {
+
+            //finish ui change
+            KLP.prototype.hookUI = function () {
                 var div_title = document.getElementById('orders-div')
                 div_title.insertBefore(this._mklToolkit[0], div_title.getElementsByTagName('h2')[0].nextSibling)
             }
 
+            //change default behaviour of removing items;
             KLP.prototype.hookDeleteHandler= function () {
-                //Hook Delete Action
-                //
                 eval("Fion.deleteItem =" + Fion.deleteItem.toString().replace(
                     'window.location.reload();',
                     'console.log("deleted "+ contentName); window.myFlushTable(contentName)') + ";")
@@ -138,7 +140,8 @@
 
             }
 
-            KLP.prototype.hookButtons = function () {
+            //extra functions
+            KLP.prototype.hookAddCheckbox = function () {
                 var classTr = "rowHeaderCollapsed";
                 var metaBox = document.createElement('input');
                 metaBox.type = "checkbox";
@@ -147,7 +150,8 @@
 
                 //Check and add checkbox for each item
                 //20 items in a time
-                var addCheckBox = function() {
+                window.setInterval(
+                    function() {
                     var trs = document.getElementsByClassName(classTr);
                     var length = trs.length
                     for (var index = 0; index <length ; index++) {
@@ -161,15 +165,13 @@
                             firstTD.appendChild(newBox)
                         }
                     }
-                }
-                window.setInterval(addCheckBox, 200)
+                }, 200)
             }
 
             KLP.prototype.hookDeviceList = function () {
             }
 
-            KLP.prototype.hookAddCheckbox = function () {
-
+            KLP.prototype.hookButtons = function () {
                 //Batch deleting checked items
                 var DoRemove = function() {
                     var a = document.getElementsByClassName('rowBodyCollapsed');
