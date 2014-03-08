@@ -48,40 +48,62 @@
 //
 (
     function(isUserScript, jQuery) {
-        var $ = jQuery;
         //contentscript for userscript
         var contentScript = function() {
 
             var KLP = function() {
-                this.id="Kindle Library Powerpack"
-                this.lang = "en"
-                if (/www\.amazon\.cn/.exec(window.location.href) !== null ) {
-                    this.lang = "zh"
-                }
+                this._construct = function () {
+                    this.id="Kindle Library Powerpack"
+                    this.lang = "en"
+                    if (/www\.amazon\.cn/.exec(window.location.href) !== null ) {
+                        this.lang = "zh"
+                    }
 
-                this._getText = {
-                    "zh": {
-                        "remove_item" : "删除"
+                    this._getText = {
+                        "zh": {
+                            "remove_item" : "删除"
                         , "check_all" : "全选/清空"
                         , "check_inverse" : "反选"
                         , "device_send" : "发送"
                         , "device_list":"所有kindle设备"
                         , "device_list":"所有kindle设备"
                         , "delete_notif":"确定要删除选中的文档?"
-                    },
-                    "en": {
-                        "remove_item" : "delete"
+                        },
+                        "en": {
+                            "remove_item" : "delete"
                         , "check_all" : "check/uncheck all"
                         , "check_inverse" : "inverse"
                         , "device_send" : "send to device"
                         , "device_list":"kindle devices"
                         , "delete_notif":"remove all checked items?"
+                        }
                     }
+
+                    this._mklToolkit = jQuery("<div id=\"mklToolkit\"></div>")
+
                 }
+                this._construct();
             }
 
             KLP.prototype.getText = function (section) {
                 return this._getText[this.lang][section]
+            }
+
+            KLP.prototype.addButton = function (buttons) {
+                if (! buttons.length ) {
+                    return false;
+                }
+
+                buttons.forEach(
+                    (function(obj) {
+                        this._mklToolkit.append(obj)
+                    }).bind(this)
+                )
+
+            }
+            KLP.prototype.hookUI = function (buttons) {
+                var div_title = document.getElementById('orders-div')
+                div_title.insertBefore(this._mklToolkit[0], div_title.getElementsByTagName('h2')[0].nextSibling)
             }
 
             KLP.prototype.hookDeleteHandler= function () {
@@ -116,11 +138,7 @@
 
             }
 
-            KLP.prototype.hookDeviceList = function () {
-            }
-
-            KLP.prototype.hookAddCheckbox = function () {
-
+            KLP.prototype.hookButtons = function () {
                 var classTr = "rowHeaderCollapsed";
                 var metaBox = document.createElement('input');
                 metaBox.type = "checkbox";
@@ -144,6 +162,13 @@
                         }
                     }
                 }
+                window.setInterval(addCheckBox, 200)
+            }
+
+            KLP.prototype.hookDeviceList = function () {
+            }
+
+            KLP.prototype.hookAddCheckbox = function () {
 
                 //Batch deleting checked items
                 var DoRemove = function() {
@@ -168,8 +193,6 @@
                 //Main Process
                 //----
 
-                var mklToolkit = jQuery("<div id=\"mklToolkit\"></div>")
-                var idMonitor = function() {}
 
                 //add link in personal document library
                 var metalink = document.createElement('a');
@@ -254,23 +277,18 @@
                     })
                 }).text(this.getText("device_send")).attr("href", "javascript:void(0)")
 
-                //Append handle element into page content
-                div_title = document.getElementById('orders-div')
-                ;[
+                this.addButton([
                     rmlink, ckAll, invckAll,
                     selections, sendAll
-                ].forEach(function(obj) {
-                    mklToolkit.append(obj)
-                })
-
-                console.log("add toolkit ui and checkbox timer")
-                div_title.insertBefore(mklToolkit[0], div_title.getElementsByTagName('h2')[0].nextSibling)
-                window.setInterval(addCheckBox, 200)
+                ])
             }
 
             KLP.prototype.init = function () {
                 this.hookDeviceList();
                 this.hookAddCheckbox();
+                this.hookButtons();
+                //finish ui rendering
+                this.hookUI();
             }
 
             var _kpl = new KLP();
