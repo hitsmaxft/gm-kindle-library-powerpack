@@ -1,190 +1,329 @@
 // ==UserScript==
-// id              www.amazon.com-b556bb6f-ee56-4bea-b588-998dc5bb4777@scriptish
+//
+// @id              www.amazon.com-b556bb6f-ee56-4bea-b588-998dc5bb4777@scriptish
+//
 // @namespace      http://userscript.org/~hitsmaxft
+//
 // @name           Kindle Library Powerpack
-// @version        2.1.2
-// @author         hitsmaxft<mfthits@gmail.com>
-// @downloadURL    http://userscripts.org/scripts/source/130289.user.js
-// @updateURL      http://userscripts.org/scripts/source/130289.user.meta.js
-// @description    batch delete item from personal documents library for Amazon kindle
+//
+// @version        2.7.0
+//
+// @author         hitsmaxft <mfthits#gmail.com>
+//
+// @description    tweaks for  Amazon kindle's personal documents library
+//
 // @grant          none
+//
 // @run-at         document-end
-// @include        https://www.amazon.com/*
-// @include        https://www.amazon.cn/*
+//
+// @include        https://www.amazon.com/gp/digital/fiona/*
+// @include        https://www.amazon.cn/gp/digital/fiona/*
+//
 // ==/UserScript==
 //
+// *changelog*
+// 
+// 2014-03-08
+//
+//   * refactory! 代码重构
+//   * quick loading 启动加速
+//
+// 2012-08-11
+//
+//   * send to device supported 支持发送到指定设备
+//
+// 2013-06-01
+// 
+//   * refactory
+//   * disable page freshing
+//   * documents by docco
+//
+// *todo list*
+//
+// * issue: lower performance
+// * issue: buggy delete hook(NEW)
 
-// changelog
-// 2012-11-23  show 10000 items in list ^_^, no any pagination~
-// 2012-08-11  send to device supported
-//             bugfix: orginal text animation callback not work while sending documents
-// #todo
-// - issue: style improving
+//Content Script
+//----
+//
+(
+    function(isUserScript, jQuery) {
+        var $ = jQuery;
+        //contentscript for userscript
+        var contentScript = function() {
 
-(function(){
+            var KLP = function() {
+                this.id="Kindle Library Powerpack"
+                this.lang = "en"
+                if (/www\.amazon\.cn/.exec(window.location.href) !== null ) {
+                    this.lang = "zh"
+                }
 
-if (!/digital\/fiona\/manage/.test(window.location.href)) {
-    //console.log("not kindle library")
-    return 
-}
-
-
-var addBatchHandler = function(){
-    var addCheckBox = function () {
-
-//now display items up to 10k
-window.ykl.displaySize=10000;
-        var classTr = "rowHeaderCollapsed";
-        var trs = document.getElementsByClassName(classTr);
-        var metaBox = document.createElement('input');
-        metaBox.type="checkbox";
-        metaBox.className = "removeCheckBox";
-        metaBox.style.margin="0";
-        for(var index =0 ; index<trs.length; index++ ){
-            var curTr =trs[index] ;
-            var firstTD = curTr.getElementsByTagName('td')[0];
-            if (firstTD.getElementsByTagName("input").length == 0 ) {
-                var newBox = metaBox.cloneNode(true);
-                var rowIndex = /Row([0-9]+)/.exec(curTr.id)[1];
-                newBox.id = "idChecked" +rowIndex
-                newBox.setAttribute("number", rowIndex)
-                firstTD.appendChild(newBox)
-            }
-        }
-    }
-    var mklToolkit=jQuery("<div id=\"mklToolkit\"></div>")
-
-    var idMonitor = function () { }
-    //add link in personal document library
-    var metalink = document.createElement('a');
-    var relink = document.createElement('a');
-    var ckAll,invckAll, sendAll;
-    metalink.setAttribute('href', 'javascript:void(0);');
-    metalink.style.marginLeft="10px";
-    metalink.style.marginRight="10px";
-    var rmlink = metalink.cloneNode(true);
-
-    rmlink.style.color="red";
-    rmlink.text="Remove checked items!";
-    var DoRemove = function(){
-        var a=document.getElementsByClassName('rowBodyCollapsed');
-        for(var i =0; i < a.length; i++) {
-            rowIndex = /Row([0-9]+)/.exec(a[i].id)[1];
-            if ( document.getElementById("idChecked"+rowIndex).checked != false ){
-                Fion.deleteItem('deleteItem_'+a[i].getAttribute('asin'));
-                //Fion.deleteItem('deleteItem_'+a[i].getAttribute('asin'));
-                //console.log('deleteItem_'+a[i].getAttribute('asin'))
-            }
-        };
-        return;
-    }
-    rmlink.onclick = function(){
-        if(confirm('remove all items in list?')){
-            DoRemove();
-        } else {
-            return;
-        }
-    };
-    ckAll = metalink.cloneNode(true);
-    ckAll.text = "Check/unCheck All";
-    ckAll.id="mkl_ckall"
-    ckAll.onclick = function(){
-            var cbs = jQuery(".removeCheckBox")
-            cbs.attr("checked", !(cbs.filter(":checked").length>0))
-        }
-
-    invckAll = metalink.cloneNode(true);
-    invckAll.text="Inverse";
-    invckAll.id="mkl_invall"
-    invckAll.onclick = function(){
-        var cbs = document.getElementsByClassName("removeCheckBox");
-        for(var i = 0 ; i< cbs.length; ++i ){
-            cbs[i].checked=!cbs[i].checked;
-        }
-    }
-
-    //device list for document deliveraty
-    var deviceLists = jQuery("<select id=\"sendDevicesList\"></select>")
-    var selections = jQuery("<span class=\"filters\">you Devices:</span>")
-
-    jQuery(yourDevices.ownedDeviceList)
-        .filter(
-            function(index){ return (this.emailAddress.length>0) }
-        ).each(
-        function(){
-            deviceLists.append(
-                jQuery(
-                    [
-                            "<option value=\"",
-                            this.accountID,
-                            "\">",
-                            this.name,
-                            "</option>"
-                     ].join("")
-                   
-                )
-            );
-        })
-    selections.append(deviceLists);
-    sendAll = jQuery(metalink.cloneNode(true)).click(
-        function(){
-            var contentName, deviceName, messageId, kindleName
-            var curOption = jQuery("#mklToolkit option:selected")
-            deviceName = curOption.attr("value")
-            kindleName = curOption.text()
-            //message_id="kindle_pdoc"
-            jQuery(".removeCheckBox").filter(':checked').each(function(){
-                    contentName = jQuery("[id='Row" + this.getAttribute("number") + " expand']").attr("asin");
-                    messageId ="singleItemSend" + "_" + contentName
-
-                    //text notification start
-                    var sendingBoxId = "singleItemSend_" + contentName;
-                    var sendingBox = document.getElementById(sendingBoxId);
-                    sendingBox.innerHTML = mykJS.kindle_myk_popover_sending_60987; //"Sending..."
-                    Fion.showActionMsgRow(sendingBoxId);
-                    sendingBox.style.display = "block";
-                    //text notification continue
-                    console.log(contentName, deviceName, messageId, kindleName)
-                    try{
-                        Fion.sendToDevice(contentName, deviceName, messageId, kindleName)
-                    } catch (e) {
-                        sendingBox.innerHTML = e;
+                this._getText = {
+                    "zh": {
+                        "remove_item" : "删除"
+                        , "check_all" : "全选/清空"
+                        , "check_inverse" : "反选"
+                        , "device_send" : "发送"
+                        , "device_list":"所有kindle设备"
+                        , "device_list":"所有kindle设备"
+                        , "delete_notif":"确定要删除选中的文档?"
+                    },
+                    "en": {
+                        "remove_item" : "delete"
+                        , "check_all" : "check/uncheck all"
+                        , "check_inverse" : "inverse"
+                        , "device_send" : "send to device"
+                        , "device_list":"kindle devices"
+                        , "delete_notif":"remove all checked items?"
                     }
+                }
+            }
+
+            KLP.prototype.getText = function (section) {
+                return this._getText[this.lang][section]
+            }
+
+            KLP.prototype.hookDeleteHandler= function () {
+                //Hook Delete Action
+                //
+                eval("Fion.deleteItem =" + Fion.deleteItem.toString().replace(
+                    'window.location.reload();',
+                    'console.log("deleted "+ contentName); window.myFlushTable(contentName)') + ";")
+
+                    window.doMyFlush = 0;
+                    //Utils
+                    //------
+
+                    //Hook default action on deleting items
+                    window.myFlushTable = function(name) {
+                        name = name.split('_')[1]
+                        for (var key in itemCache.theData) {
+                            if (itemCache.theData[key].asin == name) {
+                                itemCache.theData.splice(key, 1)
+                                console.log("remove item from cache ")
+                            }
+                        }
+                        if (parseInt(window.doMyFlush) < 1) {
+                            console.log("repage");
+                            pageList.init()
+                            pageList.gotopage(1)
+                        } else {
+                            window.doMyFlush = window.doMyFlush - 1;
+                            console.log("reduce doMyFlush");
+                        }
+                    }
+
+            }
+
+            KLP.prototype.hookDeviceList = function () {
+            }
+
+            KLP.prototype.hookAddCheckbox = function () {
+
+                var classTr = "rowHeaderCollapsed";
+                var metaBox = document.createElement('input');
+                metaBox.type = "checkbox";
+                metaBox.className = "removeCheckBox";
+                metaBox.style.margin = "0";
+
+                //Check and add checkbox for each item
+                //20 items in a time
+                var addCheckBox = function() {
+                    var trs = document.getElementsByClassName(classTr);
+                    var length = trs.length
+                    for (var index = 0; index <length ; index++) {
+                        var curTr = trs[index];
+                        var firstTD = curTr.getElementsByTagName('td')[0];
+                        if (firstTD.getElementsByTagName("input").length == 0) {
+                            var newBox = metaBox.cloneNode(true);
+                            var rowIndex = /Row([0-9]+)/.exec(curTr.id)[1];
+                            newBox.id = "idChecked" + rowIndex
+                            newBox.setAttribute("number", rowIndex)
+                            firstTD.appendChild(newBox)
+                        }
+                    }
+                }
+
+                //Batch deleting checked items
+                var DoRemove = function() {
+                    var a = document.getElementsByClassName('rowBodyCollapsed');
+                    var ditem = []
+                    for (var i = 0; i < a.length; i++) {
+                        rowIndex = /Row([0-9]+)/.exec(a[i].id)[1];
+                        var item = document.getElementById("idChecked" + rowIndex)
+                        if (item && item.checked != false) {
+
+                            ditem.push(a[i].getAttribute('asin'))
+                        }
+                    };
+                    if (ditem.length > 0) {
+                        window.doMyFlush = ditem.length - 1;
+                        for (var i in ditem) {
+                            Fion.deleteItem('deleteItem_' + ditem[i]);
+                        }
+                    }
+                }
+
+                //Main Process
+                //----
+
+                var mklToolkit = jQuery("<div id=\"mklToolkit\"></div>")
+                var idMonitor = function() {}
+
+                //add link in personal document library
+                var metalink = document.createElement('a');
+                var relink = document.createElement('a');
+                var ckAll, invckAll, sendAll;
+                metalink.setAttribute('href', 'javascript:void(0);');
+                metalink.style.marginLeft = "10px";
+                metalink.style.marginRight = "10px";
+                var rmlink = metalink.cloneNode(true);
+
+                rmlink.style.color = "red";
+                rmlink.textContent = this.getText("remove_item")
+                var notification_text = this.getText("delete_notif")
+
+                rmlink.onclick = function() {
+                    if (confirm(notification_text)) {
+                        DoRemove();
+                    } else {
+                        return;
+                    }
+                };
+                ckAll = metalink.cloneNode(true);
+                ckAll.textContent = this.getText("check_all")
+                ckAll.id = "mkl_ckall"
+                ckAll.onclick = function() {
+                    var cbs = jQuery(".removeCheckBox")
+                    cbs.attr("checked", !(cbs.filter(":checked").length > 0))
+                }
+
+                invckAll = metalink.cloneNode(true);
+                invckAll.textContent = this.getText("check_inverse");
+                invckAll.id = "mkl_invall"
+                invckAll.onclick = function() {
+                    var cbs = document.getElementsByClassName("removeCheckBox");
+                    for (var i = 0; i < cbs.length; ++i) {
+                        cbs[i].checked = !cbs[i].checked;
+                    }
+                }
+
+                //device list for document deliveraty
+                var deviceLists = jQuery("<select id=\"sendDevicesList\"></select>")
+                var selections = jQuery("<span class=\"filters\">"+this.getText("device_list") + ":</span>")
+
+                jQuery(yourDevices.ownedDeviceList)
+                .filter(function(index) {
+                    return (this.emailAddress.length > 0)
+                }).each(function() {
+                    deviceLists.append(
+                        jQuery([
+                               "<option value=\"",
+                               this.accountID,
+                               "\">",
+                               this.name,
+                               "</option>"
+                    ].join(""))
+                    );
                 })
+                selections.append(deviceLists);
+                sendAll = jQuery(metalink.cloneNode(true)).click(function() {
+                    var contentName, deviceName, messageId, kindleName
+                    var curOption = jQuery("#mklToolkit option:selected")
+                    deviceName = curOption.attr("value")
+                    kindleName = curOption.text()
+                    //message_id="kindle_pdoc"
+                    jQuery(".removeCheckBox").filter(':checked').each(function() {
+                        contentName = jQuery("[id='Row" + this.getAttribute("number") + " expand']").attr("asin");
+                        messageId = "singleItemSend" + "_" + contentName
+
+                        //text notification start
+                        var sendingBoxId = "singleItemSend_" + contentName;
+                        var sendingBox = document.getElementById(sendingBoxId);
+                        sendingBox.innerHTML = mykJS.kindle_myk_popover_sending_60987; //"Sending..."
+                        Fion.showActionMsgRow(sendingBoxId);
+                        sendingBox.style.display = "block";
+                        //text notification continue
+                        console.log(contentName, deviceName, messageId, kindleName)
+                        try {
+                            Fion.sendToDevice(contentName, deviceName, messageId, kindleName)
+                        } catch (e) {
+                            sendingBox.innerHTML = e;
+                        }
+                    })
+                }).text(this.getText("device_send")).attr("href", "javascript:void(0)")
+
+                //Append handle element into page content
+                div_title = document.getElementById('orders-div')
+                ;[
+                    rmlink, ckAll, invckAll,
+                    selections, sendAll
+                ].forEach(function(obj) {
+                    mklToolkit.append(obj)
+                })
+
+                console.log("add toolkit ui and checkbox timer")
+                div_title.insertBefore(mklToolkit[0], div_title.getElementsByTagName('h2')[0].nextSibling)
+                window.setInterval(addCheckBox, 200)
+            }
+
+            KLP.prototype.init = function () {
+                this.hookDeviceList();
+                this.hookAddCheckbox();
+            }
+
+            var _kpl = new KLP();
+
+            _kpl.init();
+
+            //globals, make effections on default actions
+            //items in list up to 200
+            window.ykl.displaySize = 100;
+            window.pageList.pageSize = 100;
+
+
+            //Refresh list
+            pageList.gotopage(1)
         }
-    ).text("sendAll").attr("href", "javascript:void(0)")
 
-    //append handle element into page content
-    div_title = document.getElementById('orders-div')
-    ;[
-        rmlink, ckAll, invckAll,
-        selections, sendAll
-    ].forEach(
-        function(obj){
-            mklToolkit.append(obj)
+        //Content Script Utils
+        //------
+
+        //insert content scripts
+        function contentEval(source, eval, timeout) {
+            if (!/digital\/fiona\/manage/.test(window.location.href)) {
+                console.log("not kindle library")
+                return 
+            }
+            //util function, eval script in current page source
+            var Eval = eval || false
+            var Timeout = timeout || 0
+            if ('function' == typeof source && Eval) {
+                source = '(' + source + ')();'
+            }
+            var script = document.createElement("script")
+            script.setAttribute("type", "application/javascript")
+            script.textContent = source
+            script.id = "KindleLPP"
+            window.setTimeout(function() {
+                document.body.appendChild(script);
+                //document.body.removeChild(script);
+            }, Timeout)
         }
-    )
+        //Execute script content
+        //jQuery("#ordersList").ready(function(){contentEval(addBatchHandler, true , 4000)})
 
-    div_title.insertBefore( mklToolkit[0], div_title.getElementsByTagName('h2')[0].nextSibling )
-    window.setInterval(addCheckBox,2000)
-}
+        function GM_wait() {
+            if( document.getElementById("orderListBody").children.length <=2 ) {
+                window.setTimeout(GM_wait, 100);
+            } else {
+                //main();
+                contentEval(contentScript, true, 0)
+            }
+        }
+        GM_wait();
 
-function contentEval(source) {
-    //util function, eval script in current page source
-    var Eval = arguments[1] || false  
-    var Timeout = arguments[2] || 0
-    if ('function' == typeof source && Eval) {
-        source = '(' + source + ')();'
-    }
-    var script = document.createElement('script')
-    script.setAttribute("type", "application/javascript")
-    script.textContent = source
-    window.setTimeout(function(){
-            document.body.appendChild(script);
-            document.body.removeChild(script);
-        },Timeout)
-}
-
-contentEval(addBatchHandler, true , 4000)
-//jQuery("#ordersList").ready(function(){contentEval(addBatchHandler, true , 4000)})
-})()
+})(true, jQuery)
+//with js-beautify(sourcecode beautify) and docco (html document) from npm
+// vim:ft=javascript:et:sts=4
