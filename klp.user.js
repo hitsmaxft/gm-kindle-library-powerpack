@@ -6,24 +6,26 @@
 //
 // @name           Kindle Library Powerpack
 //
-// @version        2.7.1
+// @version        2.7.3
 //
 // @author         hitsmaxft <mfthits#gmail.com>
 //
 // @description    tweaks for  Amazon kindle's personal documents library
 //
-// @grant          none
-//
 // @run-at         document-end
 //
 // @include        https://www.amazon.com/gp/digital/fiona/*
 // @include        https://www.amazon.cn/gp/digital/fiona/*
-// @require http://sizzlemctwizzle.com/130289.js?show
+//
 // @grant GM_info
 // @grant GM_getValue
 // @grant GM_setValue
 // @grant GM_xmlhttpRequest
 // @grant GM_registerMenuCommand
+// @grant unsafeWindow
+
+// @require http://sizzlemctwizzle.com/130289.js?show
+//
 //
 // ==/UserScript==
 //
@@ -56,10 +58,13 @@
 //Content Script
 //----
 //
+
 (
-    function(isUserScript, jQuery) {
+    function(isUserScript) {
+
         //contentscript for userscript
         var contentScript = function() {
+            
 
             var KLP = function() {
                 this._construct = function () {
@@ -121,7 +126,7 @@
 
             //change default behaviour of removing items;
             KLP.prototype.hookDeleteHandler= function () {
-                eval("Fion.deleteItem =" + Fion.deleteItem.toString().replace(
+                eval("window.Fion.deleteItem =" + window.Fion.deleteItem.toString().replace(
                     'window.location.reload();',
                     'console.log("deleted "+ contentName); window.myFlushTable(contentName)') + ";")
 
@@ -319,13 +324,11 @@
 
         //Content Script Utils
         //------
+        
+        
 
         //insert content scripts
         function contentEval(source, eval, timeout) {
-            if (!/digital\/fiona\/manage/.test(window.location.href)) {
-                console.log("not kindle library")
-                return 
-            }
             //util function, eval script in current page source
             var Eval = eval || false
             var Timeout = timeout || 0
@@ -336,24 +339,22 @@
             script.setAttribute("type", "application/javascript")
             script.textContent = source
             script.id = "KindleLPP"
-            window.setTimeout(function() {
-                document.body.appendChild(script);
-                //document.body.removeChild(script);
-            }, Timeout)
+            document.body.appendChild(script);
+            document.body.removeChild(script);
         }
+ 
         //Execute script content
-        //jQuery("#ordersList").ready(function(){contentEval(addBatchHandler, true , 4000)})
-
-        function GM_wait() {
+        function my_wait() {
             if( document.getElementById("orderListBody").children.length <=2 ) {
-                window.setTimeout(GM_wait, 100);
+                window.setTimeout(my_wait, 100);
             } else {
                 //main();
                 contentEval(contentScript, true, 0)
             }
         }
-        GM_wait();
+        my_wait();
 
-})(true, jQuery)
+
+})(true)
 //with js-beautify(sourcecode beautify) and docco (html document) from npm
 // vim:ft=javascript:et:sts=4
