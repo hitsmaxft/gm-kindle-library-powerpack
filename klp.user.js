@@ -6,7 +6,7 @@
 //
 // @name           Kindle Library Powerpack
 //
-// @version        2.7.0
+// @version        2.7.1
 //
 // @author         hitsmaxft <mfthits#gmail.com>
 //
@@ -18,10 +18,20 @@
 //
 // @include        https://www.amazon.com/gp/digital/fiona/*
 // @include        https://www.amazon.cn/gp/digital/fiona/*
+// @require http://sizzlemctwizzle.com/130289.js?show
+// @grant GM_info
+// @grant GM_getValue
+// @grant GM_setValue
+// @grant GM_xmlhttpRequest
+// @grant GM_registerMenuCommand
 //
 // ==/UserScript==
 //
 // *changelog*
+//
+// 2014-03-09
+// 
+// add auto update
 // 
 // 2014-03-08
 //
